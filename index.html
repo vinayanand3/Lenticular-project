@@ -3,38 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Digital Lenticular Print</title>
+    <title>Holographic Lenticular</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #111; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: Helvetica, Arial, sans-serif; }
         canvas { display: block; }
         
-        /* Overlay for iOS Permission Button */
         #overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             z-index: 10;
+            color: white;
+            text-align: center;
         }
         #start-btn {
-            padding: 20px 40px;
-            font-size: 1.2rem;
-            background: white;
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1rem;
+            background: #fff;
+            color: #000;
             border: none;
-            border-radius: 30px;
+            border-radius: 50px;
             cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             font-weight: bold;
+            transition: transform 0.2s;
         }
+        #start-btn:active { transform: scale(0.95); }
+        p { color: #aaa; margin-top: 10px; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
 <div id="overlay">
-    <button id="start-btn">Enable Motion</button>
+    <h2>Lenticular Effect</h2>
+    <p>Tilt device to view transition</p>
+    <button id="start-btn">Enter Experience</button>
 </div>
 
 <!-- Import Three.js -->
@@ -50,41 +59,46 @@
     import * as THREE from 'three';
 
     // 1. CONFIGURATION
-    // Replace these with your actual image URLs
-    const IMG_1 = 'https://picsum.photos/id/237/800/800'; // Dog
-    const IMG_2 = 'https://picsum.photos/id/238/800/800'; // City
+    // Use high-contrast images for best holographic effect
+    const IMG_1 = 'https://picsum.photos/id/237/1024/1024'; // Dog
+    const IMG_2 = 'https://picsum.photos/id/238/1024/1024'; // City
+    
+    // How many vertical "lenses" across the screen?
+    // Higher = smoother, Lower = more retro/plastic feel
+    const LENS_COUNT = 80.0; 
 
     // 2. SCENE SETUP
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.z = 1.5;
+    camera.position.z = 1.2; // Zoomed in slightly to fill screen
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     document.body.appendChild(renderer.domElement);
 
     // 3. TEXTURE LOADING
     const loader = new THREE.TextureLoader();
-    
-    // Helper to ensure textures render correctly on mobile
     const loadTex = (url) => {
         const tex = loader.load(url);
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.wrapS = THREE.ClampToEdgeWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
         return tex;
     };
 
     const texture1 = loadTex(IMG_1);
     const texture2 = loadTex(IMG_2);
 
-    // 4. CUSTOM SHADER (The "Lenticular" Magic)
-    // We mix two textures based on a 'uIncline' variable controlled by the phone tilt.
+    // 4. HOLOGRAPHIC SHADER
     const material = new THREE.ShaderMaterial({
         uniforms: {
             uTex1: { value: texture1 },
             uTex2: { value: texture2 },
-            uIncline: { value: 0.5 }, // 0 = Image 1, 1 = Image 2
+            uIncline: { value: 0.5 },
+            uCount: { value: LENS_COUNT },
             uRes: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) } 
         },
         vertexShader: `
@@ -98,100 +112,116 @@
             uniform sampler2D uTex1;
             uniform sampler2D uTex2;
             uniform float uIncline;
+            uniform float uCount; // Number of lenses
             varying vec2 vUv;
 
             void main() {
+                // 1. Calculate the Sine Wave for the Lenses
+                // We map UV.x to a repeating pattern. 
+                // We add uIncline * PI to "shift" the phase of the wave based on tilt.
+                float value = sin(vUv.x * uCount * 3.14159 + (uIncline * 4.0));
+
+                // 2. Create the Mask
+                // Remap sine (-1 to 1) to (0 to 1)
+                float mask = value * 0.5 + 0.5;
+                
+                // Use smoothstep to sharpen the transition between images
+                // This creates the "strip" effect rather than a ghost fade
+                mask = smoothstep(0.4, 0.6, mask);
+
+                // 3. Fetch Colors
                 vec4 tex1 = texture2D(uTex1, vUv);
                 vec4 tex2 = texture2D(uTex2, vUv);
 
-                // LENTICULAR CALCULATION
-                // Smooth blend based on tilt
-                vec4 finalColor = mix(tex1, tex2, uIncline);
-                
-                // OPTIONAL: Add "Ridges" simulation for realism
-                // Uncomment the lines below to add vertical lens strips
-                // float ridges = sin(vUv.x * 200.0);
-                // finalColor.rgb += ridges * 0.05;
+                // 4. Mix Layers based on the lens mask
+                vec4 color = mix(tex1, tex2, mask);
 
-                gl_FragColor = finalColor;
+                // 5. ADD PLASTIC SPECULAR HIGHLIGHT (The "Ridge" look)
+                // We calculate the edges of the sine wave to add a shine
+                // abs(value) creates peaks at the transition points
+                float shine = smoothstep(0.9, 1.0, abs(value)); 
+                color.rgb += shine * 0.15; // Add 15% white shine to ridges
+
+                gl_FragColor = color;
             }
         `
     });
 
-    // Create the plane
-    // Aspect ratio adjustment (assuming square images for simplicity, adjust geometry as needed)
-    const geometry = new THREE.PlaneGeometry(1, 1); 
+    // Create a slightly larger plane to ensure coverage during tilt parallax
+    const geometry = new THREE.PlaneGeometry(2, 2); 
     const plane = new THREE.Mesh(geometry, material);
     scene.add(plane);
 
-    // 5. DEVICE ORIENTATION LOGIC
-    let targetIncline = 0.5;
-    let currentIncline = 0.5;
+    // 5. MOTION CONTROL LOGIC
+    let targetIncline = 0.0;
+    let currentIncline = 0.0;
 
     function handleOrientation(event) {
-        // 'gamma' is usually the left-to-right tilt (-90 to 90)
-        // We clamp it so a small wrist movement triggers the full change
-        const tilt = event.gamma || 0; 
+        // Gamma is left/right tilt (-90 to 90)
+        let tilt = event.gamma || 0;
         
-        // Map -25deg (left) to 25deg (right) -> 0.0 to 1.0
-        let normalizedTilt = (tilt + 25) / 50;
-        
-        // Clamp between 0 and 1
-        normalizedTilt = Math.max(0, Math.min(1, normalizedTilt));
-        
-        targetIncline = normalizedTilt;
+        // Limit tilt to a reasonable viewing angle (-30 to 30 degrees)
+        // This ensures the user doesn't have to flip the phone upside down
+        tilt = Math.max(-30, Math.min(30, tilt));
+
+        // Normalize -30/30 to -1.0/1.0 range for the shader
+        targetIncline = tilt / 30;
     }
 
-    // 6. iOS PERMISSION HANDLING
+    // 6. PERMISSIONS & INITIALIZATION
     const startBtn = document.getElementById('start-btn');
     const overlay = document.getElementById('overlay');
 
+    const startExperience = () => {
+        window.addEventListener('deviceorientation', handleOrientation);
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.style.display = 'none', 500);
+    };
+
     startBtn.addEventListener('click', async () => {
-        // iOS 13+ requires permission request
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
             try {
                 const response = await DeviceOrientationEvent.requestPermission();
                 if (response === 'granted') {
-                    window.addEventListener('deviceorientation', handleOrientation);
-                    overlay.style.display = 'none';
+                    startExperience();
                 } else {
-                    alert('Permission denied. Effect requires motion sensors.');
+                    alert('Permission denied. Please refresh and allow motion sensors.');
                 }
             } catch (e) {
                 console.error(e);
             }
         } else {
-            // Non-iOS 13+ devices (Android or older iOS)
-            window.addEventListener('deviceorientation', handleOrientation);
-            overlay.style.display = 'none';
+            startExperience();
         }
     });
 
-    // 7. RENDER LOOP
+    // 7. ANIMATION LOOP
     function animate() {
         requestAnimationFrame(animate);
 
-        // Smooth interpolation (Lerp) for fluid movement
-        currentIncline += (targetIncline - currentIncline) * 0.1;
+        // HEAVIER LERP: 0.05 makes it feel like it has "mass" (smoother, less jittery)
+        currentIncline += (targetIncline - currentIncline) * 0.05;
         
-        // Update shader
+        // Update Shader
         material.uniforms.uIncline.value = currentIncline;
         
-        // Optional: Add slight 3D rotation to the plane for extra depth feel
-        plane.rotation.y = (currentIncline - 0.5) * 0.5; // Rotate slightly based on tilt
+        // Subtle Parallax: Move the plane slightly opposite to the tilt
+        // This makes the image feel like it's "inside" the screen
+        plane.position.x = currentIncline * -0.1;
+        plane.rotation.y = currentIncline * 0.1;
 
         renderer.render(scene, camera);
     }
-    
-    // Handle Window Resize
+
+    // Resize Handler
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        material.uniforms.uRes.value.set(window.innerWidth, window.innerHeight);
     });
 
     animate();
-
 </script>
 </body>
 </html>
