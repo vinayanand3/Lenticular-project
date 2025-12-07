@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>DBZ Clean Transition</title>
+    <title>Elevator Lenticular</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Arial Black', sans-serif; }
+        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: 'Helvetica Neue', sans-serif; }
         canvas { display: block; }
         
         #overlay {
@@ -17,31 +17,35 @@
             align-items: center;
             background: rgba(0,0,0,0.9);
             z-index: 10;
-            color: #FFD700;
+            color: #eee;
             text-align: center;
-            transition: opacity 0.3s;
+            transition: opacity 0.4s;
         }
 
+        h1 { margin: 0 0 10px; font-weight: 200; letter-spacing: 2px; text-transform: uppercase; }
+        p { color: #888; font-size: 0.9rem; margin-bottom: 25px; }
+
         button {
-            margin-top: 20px;
             padding: 15px 40px;
-            font-size: 1.2rem;
-            background: #FF8800;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-weight: 900;
+            font-size: 1rem;
+            background: transparent;
+            color: #fff;
+            border: 1px solid #fff;
+            border-radius: 4px;
             cursor: pointer;
             text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
         }
+        button:active { background: #fff; color: #000; }
     </style>
 </head>
 <body>
 
 <div id="overlay">
-    <h1 style="color:white; margin:0;">READY</h1>
-    <p style="color:#888;">Tilt device to transform</p>
-    <button id="start-btn">START</button>
+    <h1>Penthouse Level</h1>
+    <p>Tilt device to open doors</p>
+    <button id="start-btn">Call Elevator</button>
 </div>
 
 <script type="importmap">
@@ -56,98 +60,129 @@
     import * as THREE from 'three';
 
     // ==========================================
-    // 1. IMAGE GENERATION (Corrected for Contrast)
+    // 1. PROCEDURAL TEXTURE GENERATION
     // ==========================================
-    function createDBZTexture(mode) {
+    
+    function createTexture(type) {
         const size = 1024;
         const canvas = document.createElement('canvas');
         canvas.width = size;
         canvas.height = size;
         const ctx = canvas.getContext('2d');
 
-        if (mode === 'base') {
-            // BASE FORM: Dark Blue/Orange
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0,0,size,size);
+        if (type === 'lobby') {
+            // --- INSIDE: FANCY HOTEL LOBBY ---
             
-            // Background Aura
-            const grad = ctx.createRadialGradient(size/2, size/2, 100, size/2, size/2, 600);
-            grad.addColorStop(0, '#ff4500'); // Red-Orange
-            grad.addColorStop(1, '#000000');
+            // Wall / Depth
+            const grad = ctx.createRadialGradient(size/2, size/2, 50, size/2, size/2, 800);
+            grad.addColorStop(0, '#e0cda5'); // Cream light
+            grad.addColorStop(1, '#3e2b18'); // Dark Wood
             ctx.fillStyle = grad;
             ctx.fillRect(0,0,size,size);
 
-            // Big Text
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = '900 250px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText("GOKU", size/2, size/2 - 50);
-            
-            ctx.font = 'bold 100px Arial';
-            ctx.fillStyle = '#ff4500';
-            ctx.fillText("BASE FORM", size/2, size/2 + 150);
-
-        } else {
-            // SSJ FORM: Bright Gold
-            ctx.fillStyle = '#443300';
-            ctx.fillRect(0,0,size,size);
-
-            // Background Aura
-            const grad = ctx.createRadialGradient(size/2, size/2, 100, size/2, size/2, 600);
-            grad.addColorStop(0, '#FFD700'); // Gold
-            grad.addColorStop(1, '#8B6508'); // Dark Gold
-            ctx.fillStyle = grad;
-            ctx.fillRect(0,0,size,size);
-            
-            // Lightning
-            ctx.strokeStyle = '#E0FFFF';
-            ctx.lineWidth = 10;
+            // Red Carpet
+            ctx.fillStyle = '#660000';
             ctx.beginPath();
-            ctx.moveTo(100, 100); ctx.lineTo(300, 400); ctx.lineTo(200, 600); ctx.lineTo(500, 900);
-            ctx.stroke();
+            ctx.moveTo(200, size);
+            ctx.lineTo(824, size);
+            ctx.lineTo(650, 400); // Perspective point
+            ctx.lineTo(374, 400);
+            ctx.fill();
 
-            // Big Text
-            ctx.fillStyle = '#000000'; // Black text for contrast against gold
-            ctx.font = '900 250px Arial';
+            // Chandelier / Light source
+            ctx.fillStyle = '#fff';
+            ctx.shadowBlur = 60;
+            ctx.shadowColor = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(size/2, 200, 50, 0, Math.PI*2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Text
+            ctx.fillStyle = '#3e2b18';
+            ctx.font = 'bold 60px serif';
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText("SSJ", size/2, size/2 - 50);
+            ctx.fillText("THE PENTHOUSE", size/2, 600);
             
-            ctx.font = 'bold 100px Arial';
-            ctx.fillStyle = '#FFF';
-            ctx.fillText("SUPER", size/2, size/2 + 150);
+            ctx.fillStyle = '#fff';
+            ctx.font = '30px sans-serif';
+            ctx.fillText("Floor 100", size/2, 650);
+
+        } else if (type === 'doors') {
+            // --- OUTSIDE: BRUSHED METAL DOORS ---
+            
+            // Base Metal
+            const grad = ctx.createLinearGradient(0, 0, size, 0);
+            grad.addColorStop(0, '#555'); 
+            grad.addColorStop(0.2, '#999'); 
+            grad.addColorStop(0.5, '#eee'); // Shine in middle
+            grad.addColorStop(0.8, '#999'); 
+            grad.addColorStop(1, '#555'); 
+            ctx.fillStyle = grad;
+            ctx.fillRect(0,0,size,size);
+
+            // Brushed noise texture
+            ctx.globalAlpha = 0.1;
+            ctx.fillStyle = '#000';
+            for(let i=0; i<5000; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const w = 1 + Math.random() * 2;
+                const h = 20 + Math.random() * 100;
+                ctx.fillRect(x,y,w,h);
+            }
+            ctx.globalAlpha = 1.0;
+
+            // The Crack in the middle
+            ctx.fillStyle = '#111';
+            ctx.fillRect(size/2 - 2, 0, 4, size);
+            
+            // Gold trim
+            ctx.strokeStyle = '#DAA520';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(50, 100, size-100, size-200);
+
+            // Arrow Up
+            ctx.fillStyle = '#0f0'; // LED Green
+            ctx.shadowColor = '#0f0';
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.moveTo(size/2, 300);
+            ctx.lineTo(size/2 - 40, 360);
+            ctx.lineTo(size/2 + 40, 360);
+            ctx.fill();
         }
 
         return new THREE.CanvasTexture(canvas);
     }
 
     // ==========================================
-    // 2. SCENE
+    // 2. SCENE SETUP
     // ==========================================
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.z = 1.1;
+    camera.position.z = 1.2;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5));
     document.body.appendChild(renderer.domElement);
 
-    const texBase = createDBZTexture('base');
-    const texSSJ = createDBZTexture('ssj');
-    texBase.colorSpace = THREE.SRGBColorSpace;
-    texSSJ.colorSpace = THREE.SRGBColorSpace;
+    const texLobby = createTexture('lobby');
+    const texDoors = createTexture('doors');
+    texLobby.colorSpace = THREE.SRGBColorSpace;
+    texDoors.colorSpace = THREE.SRGBColorSpace;
 
     // ==========================================
-    // 3. THE FIXED SHADER (SOLVES GHOSTING)
+    // 3. THE "SLIDING DOOR" SHADER
     // ==========================================
     const material = new THREE.ShaderMaterial({
         uniforms: {
-            uTex1: { value: texBase },
-            uTex2: { value: texSSJ },
-            uIncline: { value: 0.0 },
-            uDensity: { value: 600.0 }, // 600 is good for mobile
+            uTexLobby: { value: texLobby },
+            uTexDoors: { value: texDoors },
+            uOpen: { value: 0.0 }, // 0.0 = Closed, 1.0 = Fully Open
+            uDensity: { value: 500.0 }, // Lenticular ridges
+            uRes: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
         },
         vertexShader: `
             varying vec2 vUv;
@@ -157,42 +192,53 @@
             }
         `,
         fragmentShader: `
-            uniform sampler2D uTex1;
-            uniform sampler2D uTex2;
-            uniform float uIncline;
+            uniform sampler2D uTexLobby;
+            uniform sampler2D uTexDoors;
+            uniform float uOpen;
             uniform float uDensity;
             varying vec2 vUv;
 
             void main() {
-                // 1. Generate the Sine Wave (The "Bars")
-                // range: -1.0 to 1.0
-                float wave = sin(vUv.x * uDensity * 3.14159);
+                // 1. CALCULATE DOOR POSITION
+                // We want the doors to slide open based on uOpen.
+                // Left door moves left (negative x), Right door moves right (positive x).
                 
-                // 2. MAGIC FIX: ADD OFFSET INSTEAD OF PHASE SHIFT
-                // We add (uIncline * 2.5) to the wave.
-                // If Incline is -1.0 (Left) -> Wave becomes negative -> All Image A
-                // If Incline is +1.0 (Right) -> Wave becomes positive -> All Image B
-                float threshold = wave + (uIncline * 3.5); 
+                vec2 doorUV = vUv;
+                float doorMask = 1.0; 
 
-                // 3. HARD CUT
-                // smoothstep(-0.1, 0.1) creates a sharp transition.
-                // When threshold is high (tilted right), mask becomes 1.0 (Pure Image B)
-                // When threshold is low (tilted left), mask becomes 0.0 (Pure Image A)
-                float mask = smoothstep(-0.2, 0.2, threshold);
+                // If on the Left side of the card
+                if (vUv.x < 0.5) {
+                    // Shift UVs to the right to simulate door moving left
+                    doorUV.x += uOpen * 0.45; 
+                    // If the texture shifts past the center, it becomes invisible
+                    if (doorUV.x > 0.5) doorMask = 0.0;
+                } 
+                // If on the Right side of the card
+                else {
+                    // Shift UVs to the left to simulate door moving right
+                    doorUV.x -= uOpen * 0.45;
+                    // If texture shifts past center, invisible
+                    if (doorUV.x < 0.5) doorMask = 0.0;
+                }
 
-                // 4. Fetch Colors
-                vec4 c1 = texture2D(uTex1, vUv);
-                vec4 c2 = texture2D(uTex2, vUv);
+                // 2. FETCH PIXELS
+                vec4 colorLobby = texture2D(uTexLobby, vUv);
+                vec4 colorDoor = texture2D(uTexDoors, doorUV);
 
-                // 5. Mix
-                vec4 color = mix(c1, c2, mask);
+                // 3. COMPOSE SCENE
+                // If doorMask is 1, show door. Else show lobby.
+                vec4 finalColor = mix(colorLobby, colorDoor, doorMask);
 
-                // 6. Optional: Add subtle ridge texture only during transition
-                // This makes the solid images look clean, but the transition look textured
-                float ridge = (1.0 - abs(uIncline)); // Fade out ridges at extreme angles
-                color.rgb += smoothstep(0.9, 1.0, abs(wave)) * 0.1 * ridge;
+                // 4. LENTICULAR RIDGE EFFECT
+                // This adds the "physical" plastic texture on top of the animation
+                float ridges = sin(vUv.x * uDensity * 3.14);
+                float shine = smoothstep(0.9, 1.0, abs(ridges));
+                
+                // Add shine, but make it metallic on the doors and subtle on the lobby
+                float shineIntensity = doorMask > 0.5 ? 0.15 : 0.05;
+                finalColor.rgb += shine * shineIntensity;
 
-                gl_FragColor = color;
+                gl_FragColor = finalColor;
             }
         `
     });
@@ -201,19 +247,29 @@
     scene.add(plane);
 
     // ==========================================
-    // 4. LOGIC
+    // 4. TILT CONTROL
     // ==========================================
-    let targetIncline = 0.0;
-    let currentIncline = 0.0;
+    let targetOpen = 0.0; // 0 (closed) to 1 (open)
+    let currentOpen = 0.0;
 
     function handleOrientation(event) {
-        let tilt = event.gamma || 0; 
-        // Clamp tilt to +/- 30 degrees
-        // Divide by 30 to get -1.0 to 1.0 range
-        let norm = Math.max(-30, Math.min(30, tilt)) / 30;
-        targetIncline = norm;
+        const tilt = event.gamma || 0; // Left/Right
+        
+        // We want the doors to be CLOSED at center (0 tilt)
+        // And OPEN when tilted either Left OR Right.
+        
+        // 1. Get absolute tilt (0 to 30 degrees)
+        let absTilt = Math.abs(tilt);
+        
+        // 2. Map 0deg->30deg to 0.0->1.0 (Open state)
+        let openAmount = Math.min(30, absTilt) / 30;
+        
+        targetOpen = openAmount;
     }
 
+    // ==========================================
+    // 5. INIT
+    // ==========================================
     const startBtn = document.getElementById('start-btn');
     const overlay = document.getElementById('overlay');
 
@@ -224,30 +280,35 @@
                 if (response === 'granted') {
                     window.addEventListener('deviceorientation', handleOrientation);
                     overlay.style.opacity = '0';
-                    setTimeout(() => overlay.style.display = 'none', 300);
+                    setTimeout(() => overlay.style.display = 'none', 400);
                 }
             } catch (e) {}
         } else {
+            // Android/Desktop
             window.addEventListener('deviceorientation', handleOrientation);
             overlay.style.opacity = '0';
-            setTimeout(() => overlay.style.display = 'none', 300);
-            
-            // Mouse Fallback
+            setTimeout(() => overlay.style.display = 'none', 400);
+
+            // Mouse Fallback (Move mouse from center to edge to open)
             window.addEventListener('mousemove', (e) => {
-               targetIncline = (e.clientX / window.innerWidth) * 2 - 1;
+                const centerDist = Math.abs(e.clientX - window.innerWidth/2);
+                const maxDist = window.innerWidth / 2;
+                targetOpen = centerDist / maxDist;
             });
         }
     });
 
     function animate() {
         requestAnimationFrame(animate);
-        // Smooth lerp
-        currentIncline += (targetIncline - currentIncline) * 0.1;
-        material.uniforms.uIncline.value = currentIncline;
+
+        // Heavy Lerp for "Hydraulic" feel
+        currentOpen += (targetOpen - currentOpen) * 0.05;
         
-        // 3D Tilt
-        plane.rotation.y = currentIncline * 0.2;
+        material.uniforms.uOpen.value = currentOpen;
         
+        // Slight 3D rotation for realism
+        plane.rotation.y = (currentOpen - 0.5) * 0.1;
+
         renderer.render(scene, camera);
     }
     
