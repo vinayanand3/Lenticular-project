@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>High-Density Lenticular</title>
+    <title>DBZ Holographic Card</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background: #050505; font-family: 'Arial', sans-serif; }
         canvas { display: block; }
         
+        /* DBZ Style UI */
         #overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -15,32 +16,48 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.92);
             z-index: 10;
-            color: white;
+            color: #ffaa00; /* Goku Orange */
+            text-transform: uppercase;
+            letter-spacing: 2px;
             transition: opacity 0.5s ease;
         }
+        h1 {
+            font-size: 2rem; 
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px #ffaa00;
+            font-style: italic;
+        }
+        p { color: #fff; font-size: 0.8rem; margin-bottom: 30px; opacity: 0.7; }
+
         button {
-            padding: 15px 30px;
-            font-size: 1.1rem;
-            border-radius: 30px;
-            border: none;
-            background: white;
-            color: black;
-            font-weight: bold;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border: 2px solid #ffaa00;
+            background: transparent;
+            color: #ffaa00;
+            font-weight: 900;
             cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px #ffaa0066;
+            transition: all 0.2s;
+        }
+        button:active {
+            background: #ffaa00;
+            color: #000;
+            transform: scale(0.95);
         }
     </style>
 </head>
 <body>
 
 <div id="overlay">
-    <h2>Lenticular Print</h2>
-    <p style="color: #888; margin-bottom: 20px;">Tilt to Flip</p>
-    <button id="start-btn">Start Experience</button>
+    <h1>Power Up</h1>
+    <p>Tilt device to Transform</p>
+    <button id="start-btn">Initialize Scouter</button>
 </div>
 
-<!-- Import Three.js -->
 <script type="importmap">
   {
     "imports": {
@@ -52,39 +69,51 @@
 <script type="module">
     import * as THREE from 'three';
 
-    // 1. SETUP IMAGES
-    const IMG_1 = 'https://picsum.photos/id/237/1024/1024'; 
-    const IMG_2 = 'https://picsum.photos/id/238/1024/1024'; 
+    // 1. IMAGE CONFIGURATION (DBZ THEMED)
+    // Replace these URLs with your aligned Goku images for the character effect.
+    // Currently set to "Base Aura" (Red/Orange) vs "Super Saiyan Aura" (Gold/Lightning)
+    
+    // Image 1: Base Form (Red/Dark Orange Energy)
+    const IMG_1 = 'https://images.unsplash.com/photo-1497290756760-23ac55edf0d4?q=80&w=1000&auto=format&fit=crop'; 
+    
+    // Image 2: Super Saiyan Form (Gold/Yellow Lightning)
+    const IMG_2 = 'https://images.unsplash.com/photo-1566796126638-349887754b2b?q=80&w=1000&auto=format&fit=crop'; 
 
-    // 2. CONFIG: DENSITY
-    // 600.0 is much tighter. It mimics a ~60 LPI lens.
-    const LENS_DENSITY = 600.0; 
+    // 2. LENTICULAR CONFIG
+    // 800.0 = Very thin, high-density lenses (looks like a premium trading card)
+    const LENS_DENSITY = 800.0; 
 
-    // 3. SCENE
+    // 3. SETUP SCENE
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.z = 1; 
+    camera.position.z = 1.0; 
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3)); // High pixel ratio for crisp lines
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5)); // High DPI for crisp lines
     document.body.appendChild(renderer.domElement);
 
+    // 4. TEXTURE LOADER
     const loader = new THREE.TextureLoader();
+    
+    // Helper to load textures with correct color space for mobile
     const loadTex = (url) => {
         const tex = loader.load(url);
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.minFilter = THREE.LinearFilter;
         tex.magFilter = THREE.LinearFilter;
+        // Clamp to edge is important so we don't see artifacts at the borders
+        tex.wrapS = THREE.ClampToEdgeWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
         return tex;
     };
 
-    // 4. THE SHADER
+    // 5. THE SHADER MATERIAL
     const material = new THREE.ShaderMaterial({
         uniforms: {
             uTex1: { value: loadTex(IMG_1) },
             uTex2: { value: loadTex(IMG_2) },
-            uIncline: { value: 0.0 },
+            uIncline: { value: 0.0 }, // Controlled by tilt
             uDensity: { value: LENS_DENSITY },
             uRes: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
         },
@@ -103,61 +132,66 @@
             varying vec2 vUv;
 
             void main() {
-                // Calculate the phase of the lenticular sheet
-                // We add the uIncline offset to "slide" the lenses
+                // 1. CALCULATE PHASE
+                // vUv.x * uDensity creates the vertical strips.
+                // uIncline * 3.14159 shifts those strips by exactly half a cycle (one full image swap).
                 float phase = vUv.x * uDensity * 3.14159 + (uIncline * 3.14159);
                 
-                // The Sine Wave
                 float pattern = sin(phase);
 
-                // SHARPENING THE TRANSITION
-                // Instead of a soft fade, we use a tight smoothstep.
-                // -0.05 to 0.05 creates a very small blurred edge for anti-aliasing,
-                // but keeps the transition mostly sharp.
-                float mask = smoothstep(-0.05, 0.05, pattern);
+                // 2. SHARP MASKING
+                // We use a very tight smoothstep (-0.02 to 0.02). 
+                // This creates sharp, distinct lines like real plastic, not a blurry fade.
+                float mask = smoothstep(-0.02, 0.02, pattern);
 
-                // Fetch Images
+                // 3. COLOR MIXING
                 vec4 tex1 = texture2D(uTex1, vUv);
                 vec4 tex2 = texture2D(uTex2, vUv);
+                
+                // The mix happens per-pixel based on the strip mask
+                vec4 finalColor = mix(tex1, tex2, mask);
 
-                // Mix based on the sharp mask
-                vec4 color = mix(tex1, tex2, mask);
+                // 4. HOLOGRAPHIC SPECULAR (The "Shiny Plastic" look)
+                // We add a tiny bit of white to the edges of the strips to simulate light hitting the ridges.
+                // This is what makes it look like a physical card.
+                float shine = smoothstep(0.95, 1.0, abs(pattern));
+                finalColor.rgb += shine * 0.08; 
 
-                // SUBTLE GLOSS
-                // At high density, we reduce the ridge width/intensity so it doesn't wash out the image
-                float ridge = smoothstep(0.98, 1.0, abs(pattern));
-                color.rgb += ridge * 0.05; // Very subtle shine
-
-                gl_FragColor = color;
+                gl_FragColor = finalColor;
             }
         `
     });
 
-    const geometry = new THREE.PlaneGeometry(2, 2); // Full screen quad
+    // Full screen plane
+    // We adjust scale slightly to ensure images cover edges during parallax
+    const geometry = new THREE.PlaneGeometry(2.2, 2.2); 
     const plane = new THREE.Mesh(geometry, material);
     scene.add(plane);
 
-    // 5. MOTION LOGIC
-    let targetIncline = 0.0;
-    let currentIncline = 0.0;
+    // 6. SENSOR LOGIC
+    let targetIncline = 0.0; // Where the sensor wants to be
+    let currentIncline = 0.0; // Where the animation currently is (smoothed)
 
     function handleOrientation(event) {
-        let tilt = event.gamma || 0; // Left/Right tilt
-
-        // Map tilt (-30 to 30 degrees) to -1.0 to 1.0
-        // This range ensures we shift the sine wave by a full PI (half cycle)
-        // creating a complete swap from Image A to Image B.
-        let normTilt = Math.max(-30, Math.min(30, tilt)) / 30;
+        // Gamma: Left-to-Right tilt (-90 to 90)
+        const tilt = event.gamma || 0;
         
-        targetIncline = normTilt;
+        // We map a comfortable wrist tilt range (-25deg to +25deg)
+        // to the 0.0 -> 1.0 range needed for the transition.
+        // We use clamp to ensure it doesn't loop over if you tilt too far.
+        let normalized = Math.max(-25, Math.min(25, tilt)) / 25; 
+        
+        // Invert if necessary depending on preference
+        targetIncline = normalized;
     }
 
-    // 6. INIT & PERMISSIONS
+    // 7. PERMISSIONS & START
     const startBtn = document.getElementById('start-btn');
     const overlay = document.getElementById('overlay');
 
     startBtn.addEventListener('click', async () => {
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            // iOS 13+ Logic
             try {
                 const response = await DeviceOrientationEvent.requestPermission();
                 if (response === 'granted') {
@@ -165,42 +199,48 @@
                     overlay.style.opacity = '0';
                     setTimeout(() => overlay.style.display = 'none', 500);
                 } else {
-                    alert('Motion permission is required for the effect.');
+                    alert('Power level too low! (Permission denied)');
                 }
             } catch (e) { console.error(e); }
         } else {
-            // Android / Desktop fallback
+            // Android / Desktop Logic
             window.addEventListener('deviceorientation', handleOrientation);
             overlay.style.opacity = '0';
             setTimeout(() => overlay.style.display = 'none', 500);
-            
-            // Mouse fallback for testing on desktop
+
+            // DESKTOP TESTING (Mouse fallback)
             window.addEventListener('mousemove', (e) => {
-                targetIncline = ((e.clientX / window.innerWidth) * 2 - 1);
+                const x = (e.clientX / window.innerWidth) * 2 - 1;
+                targetIncline = x; 
             });
         }
     });
 
-    // 7. ANIMATION LOOP
+    // 8. ANIMATION LOOP
     function animate() {
         requestAnimationFrame(animate);
 
-        // Smooth physics
-        currentIncline += (targetIncline - currentIncline) * 0.08;
-
+        // Smooth Physics (Lerp)
+        // 0.05 is "heavy/slow", 0.1 is "snappy". 
+        // 0.07 is a good balance for a physical card feel.
+        currentIncline += (targetIncline - currentIncline) * 0.07;
+        
         material.uniforms.uIncline.value = currentIncline;
         
-        // Optional: Slight physical tilt of the plane for depth
-        plane.rotation.y = currentIncline * 0.15; 
+        // 3D Parallax Effect
+        // Rotate the plane slightly to match the phone tilt for depth
+        plane.rotation.y = currentIncline * 0.15;
+        plane.rotation.x = -0.05; // Slight tilt up for drama
 
         renderer.render(scene, camera);
     }
     
-    // Resize Handle
+    // Handle Resizing
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        material.uniforms.uRes.value.set(window.innerWidth, window.innerHeight);
     });
 
     animate();
