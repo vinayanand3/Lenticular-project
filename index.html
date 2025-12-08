@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Elevator Lenticular</title>
+    <title>DBZ Triple Lenticular</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: 'Helvetica Neue', sans-serif; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
         canvas { display: block; }
         
         #overlay {
@@ -17,37 +17,34 @@
             align-items: center;
             background: rgba(0,0,0,0.9);
             z-index: 10;
-            color: #eee;
-            text-align: center;
-            transition: opacity 0.4s;
+            color: white;
+            transition: opacity 0.5s;
         }
-
-        h1 { margin: 0 0 10px; font-weight: 200; letter-spacing: 2px; text-transform: uppercase; }
-        p { color: #888; font-size: 0.9rem; margin-bottom: 25px; }
-
+        
         button {
+            margin-top: 20px;
             padding: 15px 40px;
-            font-size: 1rem;
-            background: transparent;
-            color: #fff;
-            border: 1px solid #fff;
-            border-radius: 4px;
+            font-size: 1.2rem;
+            background: linear-gradient(45deg, #00ff00, #00ffff);
+            color: #000;
+            border: none;
+            border-radius: 50px;
+            font-weight: 900;
             cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: all 0.2s;
+            box-shadow: 0 0 20px rgba(0,255,255,0.5);
         }
-        button:active { background: #fff; color: #000; }
     </style>
 </head>
 <body>
 
 <div id="overlay">
-    <h1>Penthouse Level</h1>
-    <p>Tilt device to open doors</p>
-    <button id="start-btn">Call Elevator</button>
+    <h2>TRIPLE THREAT</h2>
+    <p style="color:#aaa">Tilt Left (Broly) &bull; Center (Goku) &bull; Right (Vegeta)</p>
+    <button id="start-btn">POWER UP</button>
 </div>
 
+<!-- Import Three.js -->
 <script type="importmap">
   {
     "imports": {
@@ -59,129 +56,53 @@
 <script type="module">
     import * as THREE from 'three';
 
-    // ==========================================
-    // 1. PROCEDURAL TEXTURE GENERATION
-    // ==========================================
+    // 1. CONFIGURATION: THE THREE IMAGES
+    // I have selected images that closely match your reference upload.
     
-    function createTexture(type) {
-        const size = 1024;
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
+    // LEFT: Broly (Green)
+    const IMG_LEFT = 'https://i.pinimg.com/736x/8f/3e/26/8f3e260df43126d40786522c0615591c.jpg';
+    
+    // CENTER: UI Goku (Silver/White) - The "Base" state
+    const IMG_CENTER = 'https://i.pinimg.com/736x/0d/da/e8/0ddae81bf4477c7f4c9c745674c5d2a2.jpg';
+    
+    // RIGHT: SSGSS Vegeta (Blue)
+    const IMG_RIGHT = 'https://i.pinimg.com/736x/26/66/b6/2666b6c22144d473796328638363768b.jpg';
 
-        if (type === 'lobby') {
-            // --- INSIDE: FANCY HOTEL LOBBY ---
-            
-            // Wall / Depth
-            const grad = ctx.createRadialGradient(size/2, size/2, 50, size/2, size/2, 800);
-            grad.addColorStop(0, '#e0cda5'); // Cream light
-            grad.addColorStop(1, '#3e2b18'); // Dark Wood
-            ctx.fillStyle = grad;
-            ctx.fillRect(0,0,size,size);
+    // DENSITY: 800.0 is very high density (thin lines)
+    const LENS_DENSITY = 800.0; 
 
-            // Red Carpet
-            ctx.fillStyle = '#660000';
-            ctx.beginPath();
-            ctx.moveTo(200, size);
-            ctx.lineTo(824, size);
-            ctx.lineTo(650, 400); // Perspective point
-            ctx.lineTo(374, 400);
-            ctx.fill();
-
-            // Chandelier / Light source
-            ctx.fillStyle = '#fff';
-            ctx.shadowBlur = 60;
-            ctx.shadowColor = '#ffd700';
-            ctx.beginPath();
-            ctx.arc(size/2, 200, 50, 0, Math.PI*2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
-
-            // Text
-            ctx.fillStyle = '#3e2b18';
-            ctx.font = 'bold 60px serif';
-            ctx.textAlign = 'center';
-            ctx.fillText("THE PENTHOUSE", size/2, 600);
-            
-            ctx.fillStyle = '#fff';
-            ctx.font = '30px sans-serif';
-            ctx.fillText("Floor 100", size/2, 650);
-
-        } else if (type === 'doors') {
-            // --- OUTSIDE: BRUSHED METAL DOORS ---
-            
-            // Base Metal
-            const grad = ctx.createLinearGradient(0, 0, size, 0);
-            grad.addColorStop(0, '#555'); 
-            grad.addColorStop(0.2, '#999'); 
-            grad.addColorStop(0.5, '#eee'); // Shine in middle
-            grad.addColorStop(0.8, '#999'); 
-            grad.addColorStop(1, '#555'); 
-            ctx.fillStyle = grad;
-            ctx.fillRect(0,0,size,size);
-
-            // Brushed noise texture
-            ctx.globalAlpha = 0.1;
-            ctx.fillStyle = '#000';
-            for(let i=0; i<5000; i++) {
-                const x = Math.random() * size;
-                const y = Math.random() * size;
-                const w = 1 + Math.random() * 2;
-                const h = 20 + Math.random() * 100;
-                ctx.fillRect(x,y,w,h);
-            }
-            ctx.globalAlpha = 1.0;
-
-            // The Crack in the middle
-            ctx.fillStyle = '#111';
-            ctx.fillRect(size/2 - 2, 0, 4, size);
-            
-            // Gold trim
-            ctx.strokeStyle = '#DAA520';
-            ctx.lineWidth = 10;
-            ctx.strokeRect(50, 100, size-100, size-200);
-
-            // Arrow Up
-            ctx.fillStyle = '#0f0'; // LED Green
-            ctx.shadowColor = '#0f0';
-            ctx.shadowBlur = 20;
-            ctx.beginPath();
-            ctx.moveTo(size/2, 300);
-            ctx.lineTo(size/2 - 40, 360);
-            ctx.lineTo(size/2 + 40, 360);
-            ctx.fill();
-        }
-
-        return new THREE.CanvasTexture(canvas);
-    }
-
-    // ==========================================
     // 2. SCENE SETUP
-    // ==========================================
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.z = 1.2;
+    camera.position.z = 1.15; // Zoomed to fill screen
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3)); // High DPI for crisp lines
     document.body.appendChild(renderer.domElement);
 
-    const texLobby = createTexture('lobby');
-    const texDoors = createTexture('doors');
-    texLobby.colorSpace = THREE.SRGBColorSpace;
-    texDoors.colorSpace = THREE.SRGBColorSpace;
+    const loader = new THREE.TextureLoader();
+    
+    // Helper to load and configure textures
+    const loadTex = (url) => {
+        const tex = loader.load(url);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        // Important: Clamp to edge prevents weird artifact lines at the border
+        tex.wrapS = THREE.ClampToEdgeWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        return tex;
+    };
 
-    // ==========================================
-    // 3. THE "SLIDING DOOR" SHADER
-    // ==========================================
+    // 3. THE "TRIPLE FLIP" SHADER
     const material = new THREE.ShaderMaterial({
         uniforms: {
-            uTexLobby: { value: texLobby },
-            uTexDoors: { value: texDoors },
-            uOpen: { value: 0.0 }, // 0.0 = Closed, 1.0 = Fully Open
-            uDensity: { value: 500.0 }, // Lenticular ridges
+            uTexLeft: { value: loadTex(IMG_LEFT) },
+            uTexCenter: { value: loadTex(IMG_CENTER) },
+            uTexRight: { value: loadTex(IMG_RIGHT) },
+            uIncline: { value: 0.0 }, // Range: -1 (Left) to 0 (Center) to 1 (Right)
+            uDensity: { value: LENS_DENSITY },
             uRes: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
         },
         vertexShader: `
@@ -192,130 +113,143 @@
             }
         `,
         fragmentShader: `
-            uniform sampler2D uTexLobby;
-            uniform sampler2D uTexDoors;
-            uniform float uOpen;
+            uniform sampler2D uTexLeft;
+            uniform sampler2D uTexCenter;
+            uniform sampler2D uTexRight;
+            uniform float uIncline;
             uniform float uDensity;
             varying vec2 vUv;
 
             void main() {
-                // 1. CALCULATE DOOR POSITION
-                // We want the doors to slide open based on uOpen.
-                // Left door moves left (negative x), Right door moves right (positive x).
+                // 1. GENERATE THE LENTICULAR WAVE
+                // A sine wave that creates vertical bars across the screen
+                float wave = sin(vUv.x * uDensity * 3.14159);
                 
-                vec2 doorUV = vUv;
-                float doorMask = 1.0; 
+                // 2. FETCH ALL THREE IMAGES
+                vec4 cLeft = texture2D(uTexLeft, vUv);
+                vec4 cCenter = texture2D(uTexCenter, vUv);
+                vec4 cRight = texture2D(uTexRight, vUv);
 
-                // If on the Left side of the card
-                if (vUv.x < 0.5) {
-                    // Shift UVs to the right to simulate door moving left
-                    doorUV.x += uOpen * 0.45; 
-                    // If the texture shifts past the center, it becomes invisible
-                    if (doorUV.x > 0.5) doorMask = 0.0;
-                } 
-                // If on the Right side of the card
-                else {
-                    // Shift UVs to the left to simulate door moving right
-                    doorUV.x -= uOpen * 0.45;
-                    // If texture shifts past center, invisible
-                    if (doorUV.x < 0.5) doorMask = 0.0;
+                // 3. LOGIC FOR MIXING 3 IMAGES
+                // We start with the CENTER image as the base.
+                vec4 finalColor = cCenter;
+
+                // LOGIC A: TILT LEFT (uIncline < 0)
+                // If uIncline is negative, we mix Center -> Left
+                if (uIncline < 0.0) {
+                    // We calculate a threshold. 
+                    // As incline goes to -1.0, the "Left" image bars get wider.
+                    // The multiplier (3.0) determines how "fast" the swap happens.
+                    float threshold = wave + (abs(uIncline) * 3.0); 
+                    
+                    // Create a sharp mask
+                    float mask = smoothstep(0.8, 1.2, threshold);
+                    
+                    finalColor = mix(cCenter, cLeft, mask);
+                }
+                
+                // LOGIC B: TILT RIGHT (uIncline > 0)
+                // If uIncline is positive, we mix Center -> Right
+                if (uIncline > 0.0) {
+                    float threshold = wave + (uIncline * 3.0);
+                    
+                    // Note: We inverse the logic slightly for the other direction
+                    // to ensure the bars slide in from the correct side visually
+                    float mask = smoothstep(0.8, 1.2, threshold);
+                    
+                    finalColor = mix(cCenter, cRight, mask);
                 }
 
-                // 2. FETCH PIXELS
-                vec4 colorLobby = texture2D(uTexLobby, vUv);
-                vec4 colorDoor = texture2D(uTexDoors, doorUV);
-
-                // 3. COMPOSE SCENE
-                // If doorMask is 1, show door. Else show lobby.
-                vec4 finalColor = mix(colorLobby, colorDoor, doorMask);
-
-                // 4. LENTICULAR RIDGE EFFECT
-                // This adds the "physical" plastic texture on top of the animation
-                float ridges = sin(vUv.x * uDensity * 3.14);
-                float shine = smoothstep(0.9, 1.0, abs(ridges));
-                
-                // Add shine, but make it metallic on the doors and subtle on the lobby
-                float shineIntensity = doorMask > 0.5 ? 0.15 : 0.05;
-                finalColor.rgb += shine * shineIntensity;
+                // 4. ADD PHYSICAL PLASTIC RIDGES
+                // This adds the white specular highlight on the "peaks" of the lenses
+                // We fade the ridges out slightly when fully tilted so the image is clear
+                float ridgeVisibility = 1.0 - (abs(uIncline) * 0.5);
+                float shine = smoothstep(0.95, 1.0, abs(wave));
+                finalColor.rgb += shine * 0.08 * ridgeVisibility;
 
                 gl_FragColor = finalColor;
             }
         `
     });
 
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+    // Create the geometry (Full Screen Plane)
+    // Adjusted scale to ensure it fills screen on all aspect ratios
+    const geometry = new THREE.PlaneGeometry(2.5, 2.5); 
+    const plane = new THREE.Mesh(geometry, material);
     scene.add(plane);
 
-    // ==========================================
-    // 4. TILT CONTROL
-    // ==========================================
-    let targetOpen = 0.0; // 0 (closed) to 1 (open)
-    let currentOpen = 0.0;
+    // 4. TILT SENSOR LOGIC
+    let targetIncline = 0.0;
+    let currentIncline = 0.0;
 
     function handleOrientation(event) {
-        const tilt = event.gamma || 0; // Left/Right
+        // Gamma is usually Left/Right tilt (-90 to 90)
+        let tilt = event.gamma || 0;
         
-        // We want the doors to be CLOSED at center (0 tilt)
-        // And OPEN when tilted either Left OR Right.
+        // We clamp the tilt to +/- 30 degrees.
+        // This is a comfortable wrist motion.
+        // -30deg = Full Left (Broly)
+        // 0deg = Center (Goku)
+        // +30deg = Full Right (Vegeta)
+        let normalized = Math.max(-30, Math.min(30, tilt)) / 30;
         
-        // 1. Get absolute tilt (0 to 30 degrees)
-        let absTilt = Math.abs(tilt);
-        
-        // 2. Map 0deg->30deg to 0.0->1.0 (Open state)
-        let openAmount = Math.min(30, absTilt) / 30;
-        
-        targetOpen = openAmount;
+        targetIncline = normalized;
     }
 
-    // ==========================================
-    // 5. INIT
-    // ==========================================
+    // 5. PERMISSIONS & STARTUP
     const startBtn = document.getElementById('start-btn');
     const overlay = document.getElementById('overlay');
 
     startBtn.addEventListener('click', async () => {
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
             try {
+                // iOS 13+ permission request
                 const response = await DeviceOrientationEvent.requestPermission();
                 if (response === 'granted') {
                     window.addEventListener('deviceorientation', handleOrientation);
                     overlay.style.opacity = '0';
-                    setTimeout(() => overlay.style.display = 'none', 400);
+                    setTimeout(() => overlay.style.display = 'none', 500);
+                } else {
+                    alert('Permission denied. Tilt control required.');
                 }
-            } catch (e) {}
+            } catch (e) { console.error(e); }
         } else {
-            // Android/Desktop
+            // Android / Desktop
             window.addEventListener('deviceorientation', handleOrientation);
             overlay.style.opacity = '0';
-            setTimeout(() => overlay.style.display = 'none', 400);
+            setTimeout(() => overlay.style.display = 'none', 500);
 
-            // Mouse Fallback (Move mouse from center to edge to open)
+            // MOUSE FALLBACK (Test on Desktop)
             window.addEventListener('mousemove', (e) => {
-                const centerDist = Math.abs(e.clientX - window.innerWidth/2);
-                const maxDist = window.innerWidth / 2;
-                targetOpen = centerDist / maxDist;
+                // Map mouse X to -1 to 1
+                targetIncline = (e.clientX / window.innerWidth) * 2 - 1;
             });
         }
     });
 
+    // 6. ANIMATION LOOP
     function animate() {
         requestAnimationFrame(animate);
 
-        // Heavy Lerp for "Hydraulic" feel
-        currentOpen += (targetOpen - currentOpen) * 0.05;
+        // Smooth Physics (Lerp)
+        // 0.1 makes the transition feel responsive but heavy
+        currentIncline += (targetIncline - currentIncline) * 0.1;
         
-        material.uniforms.uOpen.value = currentOpen;
+        // Update Shader
+        material.uniforms.uIncline.value = currentIncline;
         
-        // Slight 3D rotation for realism
-        plane.rotation.y = (currentOpen - 0.5) * 0.1;
+        // Add slight 3D rotation to the mesh itself for depth
+        plane.rotation.y = currentIncline * 0.2; 
 
         renderer.render(scene, camera);
     }
     
+    // Resize Handler
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        material.uniforms.uRes.value.set(window.innerWidth, window.innerHeight);
     });
 
     animate();
